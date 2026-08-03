@@ -44,6 +44,10 @@ export default class MysInfo {
       "hard_challenge",
       "hard_challenge_popularity",
       "characterDetail",
+      "challenge",
+      "challengeStory",
+      "challengeBoss",
+      "challengePeak",
     ]
 
     this.gtest = false

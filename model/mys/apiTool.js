@@ -217,6 +217,26 @@ export default class apiTool {
           url: `${hostRecord}game_record/app/hkrpg/api/challenge`,
           query: `role_id=${this.uid}&schedule_type=${data.schedule_type || 1}&server=${this.server}`,
         },
+        /** 混沌回忆详细信息 */
+        challenge: {
+          url: `${hostRecord}game_record/app/hkrpg/api/challenge`,
+          query: `isPrev=&need_all=true&role_id=${this.uid}&schedule_type=${data.schedule_type || 1}&server=${this.server}`,
+        },
+        /** 虚构叙事 */
+        challengeStory: {
+          url: `${hostRecord}game_record/app/hkrpg/api/challenge_story`,
+          query: `isPrev=&need_all=true&role_id=${this.uid}&schedule_type=${data.schedule_type || 1}&server=${this.server}`,
+        },
+        /** 末日幻影 */
+        challengeBoss: {
+          url: `${hostRecord}game_record/app/hkrpg/api/challenge_boss`,
+          query: `isPrev=&need_all=true&role_id=${this.uid}&schedule_type=${data.schedule_type || 1}&server=${this.server}`,
+        },
+        /** 异相仲裁 */
+        challengePeak: {
+          url: `${hostRecord}game_record/app/hkrpg/api/challenge_peak`,
+          query: `isPrev=&need_all=true&role_id=${this.uid}&schedule_type=${data.schedule_type || 1}&server=${this.server}`,
+        },
         /** 角色面板 */
         avatarInfo: {
           url: `${hostRecord}game_record/app/hkrpg/api/avatar/info`,
