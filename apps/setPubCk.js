@@ -41,9 +41,9 @@ export class setPubCk extends plugin {
   async pubCk() {
     let msg = this.e.msg
 
-    if (
-      !(/(ltoken|ltoken_v2)/.test(this.e.msg) && /(ltuid|ltmid_v2|account_mid_v2)/.test(this.e.msg))
-    ) {
+    if (!(
+      /(ltoken|ltoken_v2)/.test(this.e.msg) && /(ltuid|ltmid_v2|account_mid_v2)/.test(this.e.msg)
+    )) {
       this.e.reply("cookie错误，请发送正确的cookie")
       return true
     }
