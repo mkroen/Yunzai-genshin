@@ -879,7 +879,7 @@ export default class GachaLog extends base {
           start: "2025-02-26 06:00:00",
           end: "2025-03-19 11:59:59",
         },
-      ]
+      ],
     }
     if (role5join[this.role.name]) {
       for (const period of role5join[this.role.name]) {

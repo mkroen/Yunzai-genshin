@@ -433,12 +433,12 @@ export default class ExportLog extends base {
 
     if (missing.length > 0 && missingV4.length > 0) {
       if (missing.length > 0) {
-        this.e.reply(`json文件内容错误：缺少必要字段 ${missing.join(', ')}`)
-          return false
+        this.e.reply(`json文件内容错误：缺少必要字段 ${missing.join(", ")}`)
+        return false
       }
       if (missingV4.length > 0) {
         this.e.reply(`json文件内容错误：缺少必要字段 ${missingV4.join(", ")}`)
-          return false
+        return false
       }
     }
 
