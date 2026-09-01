@@ -175,24 +175,18 @@ function waitForVerification(challenge) {
 
 async function getPendingVerification(key, mysApi, game) {
   const current = state().active.get(key)
-  if (current) return { owner: false, ...(await current) }
+  if (current) return { owner: false, pending: await current }
 
   const creating = (async () => {
     const challenge = await createVerification(mysApi, game)
-    return waitForVerification(challenge)
+    return { ...waitForVerification(challenge), verification: null }
   })()
   state().active.set(key, creating)
 
   try {
     const pending = await creating
-    pending.result.then(
-      () => {
-        const timer = setTimeout(() => state().active.delete(key), SOLVED_REUSE_MS)
-        timer.unref?.()
-      },
-      () => state().active.delete(key),
-    )
-    return { owner: true, ...pending }
+    pending.result.catch(() => state().active.delete(key))
+    return { owner: true, pending }
   } catch (error) {
     state().active.delete(key)
     throw error
@@ -236,18 +230,30 @@ export class mysCaptcha extends plugin {
 
     try {
       const cookieId = crypto.createHash("sha256").update(mysApi.cookie).digest("hex").slice(0, 16)
-      const pending = await getPendingVerification(
-        `${e.user_id}:${mysApi.uid}:${cookieId}`,
+      const activeKey = `${e.user_id}:${mysApi.uid}:${cookieId}`
+      const { owner, pending } = await getPendingVerification(
+        activeKey,
         mysApi,
         mysApi.game,
       )
       const link = `${baseUrl}${ROUTE_PREFIX}${pending.token}`
-      if (pending.owner) {
+      if (owner) {
         await sendPrivateLink(e, link)
         if (e.isGroup) await e.reply("米游社需要安全验证，链接已发送至私聊。")
       }
       const solved = await pending.result
-      await verifyVerification(mysApi, mysApi.game, solved)
+      pending.verification ??= verifyVerification(mysApi, mysApi.game, solved)
+      try {
+        await pending.verification
+      } catch (error) {
+        state().active.delete(activeKey)
+        throw error
+      }
+      const clearTimer = setTimeout(
+        () => state().active.delete(activeKey),
+        SOLVED_REUSE_MS,
+      )
+      clearTimer.unref?.()
       return await mysApi.getData(type, {
         ...(data || {}),
         headers: {
