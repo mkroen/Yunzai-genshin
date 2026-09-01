@@ -4,8 +4,10 @@ import GsCfg from "../model/gsCfg.js"
 
 const ROUTE_PREFIX = "/mys-captcha/"
 const SESSION_TTL_MS = 2 * 60 * 1000
+const SOLVED_REUSE_MS = 30 * 1000
 const GLOBAL_STATE = Symbol.for("yunzai-genshin.mys-captcha.state")
 const REGISTERED = Symbol.for("yunzai-genshin.mys-captcha.registered")
+const CHALLENGE_GAME = { gs: "2", sr: "6", zzz: "8" }
 
 function state() {
   const value = (globalThis[GLOBAL_STATE] ??= {})
@@ -22,7 +24,7 @@ function createDs(query = "") {
   return `${t},${r},${sign}`
 }
 
-async function createVerification(cookie) {
+async function createVerification(cookie, game = "gs") {
   const query = "is_high=false"
   const response = await fetch(
     `https://api-takumi-record.mihoyo.com/game_record/app/card/wapi/createVerification?${query}`,
@@ -32,9 +34,7 @@ async function createVerification(cookie) {
         DS: createDs(query),
         "x-rpc-app_version": "2.60.1",
         "x-rpc-client_type": "5",
-        "x-rpc-challenge_game": "6",
-        "x-rpc-page": "v1.4.1-rpg_#/rpg",
-        "x-rpc-tool-version": "v1.4.1-rpg",
+        "x-rpc-challenge_game": CHALLENGE_GAME[game] || CHALLENGE_GAME.gs,
         "User-Agent": "Mozilla/5.0",
       },
       timeout: 10000,
@@ -133,12 +133,12 @@ function waitForVerification(challenge) {
   return { token, result }
 }
 
-async function getPendingVerification(key, cookie) {
+async function getPendingVerification(key, cookie, game) {
   const current = state().active.get(key)
   if (current) return { owner: false, ...(await current) }
 
   const creating = (async () => {
-    const challenge = await createVerification(cookie)
+    const challenge = await createVerification(cookie, game)
     return waitForVerification(challenge)
   })()
   state().active.set(key, creating)
@@ -146,7 +146,10 @@ async function getPendingVerification(key, cookie) {
   try {
     const pending = await creating
     pending.result.then(
-      () => state().active.delete(key),
+      () => {
+        const timer = setTimeout(() => state().active.delete(key), SOLVED_REUSE_MS)
+        timer.unref?.()
+      },
       () => state().active.delete(key),
     )
     return { owner: true, ...pending }
@@ -193,7 +196,11 @@ export class mysCaptcha extends plugin {
 
     try {
       const cookieId = crypto.createHash("sha256").update(mysApi.cookie).digest("hex").slice(0, 16)
-      const pending = await getPendingVerification(`${e.user_id}:${mysApi.uid}:${cookieId}`, mysApi.cookie)
+      const pending = await getPendingVerification(
+        `${e.user_id}:${mysApi.uid}:${cookieId}`,
+        mysApi.cookie,
+        mysApi.game,
+      )
       const link = `${baseUrl}${ROUTE_PREFIX}${pending.token}`
       if (pending.owner) {
         await sendPrivateLink(e, link)
