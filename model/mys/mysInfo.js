@@ -204,7 +204,8 @@ export default class MysInfo {
     e.uid = mysInfo.uid
 
     let user = e.user?.getMysUser()
-    option.device = user.device
+    // The device fingerprint must belong to the selected Cookie, not the caller.
+    option.device = mysInfo.ckUser?.device || user?.device
     option.game = e?.game || (e?.isSr ? "sr" : "gs")
     let mysApi = new MysApi(mysInfo.uid, mysInfo.ckInfo.ck, option)
 

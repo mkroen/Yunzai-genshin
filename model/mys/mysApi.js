@@ -3,6 +3,8 @@ import fetch from "node-fetch"
 import cfg from "../../../../lib/config/config.js"
 import ApiTool from "./apiTool.js"
 
+const CN_APP_VERSION = "2.114.0"
+
 const game_region = {
   gs: ["cn_gf01", "cn_qd01", "os_usa", "os_euro", "os_asia", "os_cht"],
   sr: [
@@ -167,8 +169,8 @@ export default class MysApi {
 
   getHeaders(query = "", body = "") {
     const cn = {
-      app_version: "2.40.1",
-      User_Agent: `Mozilla/5.0 (Linux; Android 12; ${this.device}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.73 Mobile Safari/537.36 miHoYoBBS/2.40.1`,
+      app_version: CN_APP_VERSION,
+      User_Agent: `Mozilla/5.0 (Linux; Android 12; ${this.device}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36 miHoYoBBS/${CN_APP_VERSION}`,
       client_type: "5",
       Origin: "https://webstatic.mihoyo.com",
       X_Requested_With: "com.mihoyo.hyperion",
@@ -192,7 +194,10 @@ export default class MysApi {
     return {
       "x-rpc-app_version": client.app_version,
       "x-rpc-client_type": client.client_type,
+      "x-rpc-device_id": this.device.toUpperCase(),
       "User-Agent": client.User_Agent,
+      Origin: client.Origin,
+      "X-Requested-With": client.X_Requested_With,
       Referer: client.Referer,
       DS: this.getDs(query, body),
     }
