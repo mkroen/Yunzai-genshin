@@ -61,10 +61,11 @@ async function createVerification(mysApi, game = "gs") {
 }
 
 async function verifyVerification(mysApi, game, solved) {
+  const challenge = solved.original_challenge || solved.geetest_challenge
   const data = {
-    geetest_challenge: solved.geetest_challenge,
+    geetest_challenge: challenge,
     geetest_validate: solved.geetest_validate,
-    geetest_seccode: solved.geetest_seccode,
+    geetest_seccode: `${solved.geetest_validate}|jordan`,
   }
   const body = JSON.stringify(data)
   const response = await fetch(
@@ -85,6 +86,7 @@ async function verifyVerification(mysApi, game, solved) {
     throw new Error(`verifyVerification retcode=${result?.retcode ?? "unknown"}`)
   }
   logger.mark(`[米游社验证码] 官方验证提交成功 game=${game}`)
+  return result?.data?.challenge || challenge
 }
 
 function captchaHtml(token, challenge) {
@@ -148,7 +150,7 @@ function registerRoutes() {
     }
     state().sessions.delete(req.params.token)
     logger.mark("[米游社验证码] 浏览器回调已接收")
-    session.resolve(result)
+    session.resolve({ ...result, original_challenge: session.challenge.challenge })
     res.json({ ok: true })
   })
 }
@@ -243,8 +245,9 @@ export class mysCaptcha extends plugin {
       }
       const solved = await pending.result
       pending.verification ??= verifyVerification(mysApi, mysApi.game, solved)
+      let verifiedChallenge
       try {
-        await pending.verification
+        verifiedChallenge = await pending.verification
       } catch (error) {
         state().active.delete(activeKey)
         throw error
@@ -258,7 +261,7 @@ export class mysCaptcha extends plugin {
         ...(data || {}),
         headers: {
           ...(data?.headers || {}),
-          "x-rpc-challenge": solved.geetest_challenge,
+          "x-rpc-challenge": verifiedChallenge,
         },
       })
     } catch (error) {
