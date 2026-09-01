@@ -1,5 +1,7 @@
 # 公共查询是否使用用户ck  0-不使用 1-使用
 allowUseCookie: 1
+# 验证码页面外部访问地址，留空时不发送验证链接
+captchaBaseUrl: ""
 # 默认cookie帮助文档链接地址
 cookieDoc: https://docs.qq.com/doc/DUWNVQVFTU3liTVlO
 

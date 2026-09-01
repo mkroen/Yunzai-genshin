@@ -1,4 +1,83 @@
 import crypto from "crypto"
+
+const CN_APP_VERSION = "2.114.0"
+
+function stableHex(deviceId, label, length) {
+  return crypto.createHash("sha256").update(`${deviceId}:${label}`).digest("hex").slice(0, length)
+}
+
+function createCnDeviceFpBody(deviceId) {
+  const stableDeviceId = String(deviceId || crypto.randomUUID()).toLowerCase()
+  const model = "PHK110"
+  const product = "OP5913L1"
+  const board = "taro"
+  const deviceInfo = `OnePlus/${model}/${product}:13/SKQ1.221119.001/T.1328291_b9_41:user/release-keys`
+  const extFields = {
+    proxyStatus: 0,
+    isRoot: 1,
+    romCapacity: "512",
+    deviceName: "私人手机",
+    productName: product,
+    romRemain: "491",
+    hostname: "localhost",
+    screenSize: "1264x2640",
+    isTablet: 0,
+    aaid: stableHex(stableDeviceId, "aaid", 64).toUpperCase(),
+    model,
+    brand: "OnePlus",
+    hardware: "qcom",
+    deviceType: model,
+    devId: "REL",
+    serialNumber: "unknown",
+    sdCapacity: 500000,
+    buildTime: "1717740969000",
+    buildUser: "root",
+    simState: 5,
+    ramRemain: "200000",
+    appUpdateTimeDiff: "1717740969000",
+    deviceInfo,
+    vaid: stableHex(stableDeviceId, "vaid", 64).toUpperCase(),
+    buildType: "user",
+    sdkVersion: "34",
+    ui_mode: "UI_MODE_TYPE_NORMAL",
+    isMockLocation: 0,
+    cpuType: "arm64-v8a",
+    isAirMode: 0,
+    ringMode: 1,
+    chargeStatus: 1,
+    manufacturer: "OnePlus",
+    emulatorStatus: 0,
+    appMemory: "512",
+    osVersion: "14",
+    vendor: "--",
+    accelerometer: "-1.3004991x6.38764x7.19103",
+    sdRemain: 200000,
+    buildTags: "release-keys",
+    packageName: "com.mihoyo.hyperion",
+    networkType: "WiFi",
+    oaid: stableHex(stableDeviceId, "oaid", 16),
+    debugStatus: 1,
+    ramCapacity: "500000",
+    magnetometer: "27.1084x-48.5804x-24.8758",
+    display: `${model}_14.0.0.810(CN01)`,
+    appInstallTimeDiff: "1717740969000",
+    packageVersion: CN_APP_VERSION,
+    gyroscope: "-0.02543317x0.005725792x0.003195791",
+    batteryStatus: 50,
+    hasKeyboard: 0,
+    board,
+  }
+  return {
+    device_id: crypto.randomBytes(8).toString("hex"),
+    seed_id: crypto.randomUUID(),
+    platform: "2",
+    seed_time: Date.now().toString(),
+    ext_fields: JSON.stringify(extFields),
+    app_name: "bbs_cn",
+    bbs_device_id: stableDeviceId,
+    device_fp: `38d7${crypto.randomBytes(5).toString("hex").slice(0, 9)}`,
+  }
+}
 /**
  * 整合接口用于查询数据
  * 方便后续用于解耦
@@ -36,15 +115,7 @@ export default class apiTool {
           ? {
               getFp: {
                 url: `${hostPublicData}device-fp/api/getFp`,
-                body: {
-                  seed_id: data.seed_id,
-                  device_id: data.deviceId.toUpperCase(),
-                  platform: "1",
-                  seed_time: new Date().getTime() + "",
-                  ext_fields: `{"proxyStatus":"0","accelerometer":"-0.159515x-0.830887x-0.682495","ramCapacity":"3746","IDFV":"${data.deviceId.toUpperCase()}","gyroscope":"-0.191951x-0.112927x0.632637","isJailBreak":"0","model":"iPhone12,5","ramRemain":"115","chargeStatus":"1","networkType":"WIFI","vendor":"--","osVersion":"17.0.2","batteryStatus":"50","screenSize":"414×896","cpuCores":"6","appMemory":"55","romCapacity":"488153","romRemain":"157348","cpuType":"CPU_TYPE_ARM64","magnetometer":"-84.426331x-89.708435x-37.117889"}`,
-                  app_name: "bbs_cn",
-                  device_fp: "38d7ee834d1e9",
-                },
+                body: createCnDeviceFpBody(data.deviceId),
               },
             }
           : {
@@ -172,15 +243,7 @@ export default class apiTool {
               /** 体力接口fp参数用于避开验证码 */
               getFp: {
                 url: `${hostPublicData}device-fp/api/getFp`,
-                body: {
-                  seed_id: data.seed_id,
-                  device_id: data.deviceId.toUpperCase(),
-                  platform: "1",
-                  seed_time: new Date().getTime() + "",
-                  ext_fields: `{"proxyStatus":"0","accelerometer":"-0.159515x-0.830887x-0.682495","ramCapacity":"3746","IDFV":"${data.deviceId.toUpperCase()}","gyroscope":"-0.191951x-0.112927x0.632637","isJailBreak":"0","model":"iPhone12,5","ramRemain":"115","chargeStatus":"1","networkType":"WIFI","vendor":"--","osVersion":"17.0.2","batteryStatus":"50","screenSize":"414×896","cpuCores":"6","appMemory":"55","romCapacity":"488153","romRemain":"157348","cpuType":"CPU_TYPE_ARM64","magnetometer":"-84.426331x-89.708435x-37.117889"}`,
-                  app_name: "bbs_cn",
-                  device_fp: "38d7ee834d1e9",
-                },
+                body: createCnDeviceFpBody(data.deviceId),
               },
             }
           : {
@@ -284,15 +347,7 @@ export default class apiTool {
               /** 体力接口fp参数用于避开验证码 */
               getFp: {
                 url: `${hostPublicData}device-fp/api/getFp`,
-                body: {
-                  seed_id: data.seed_id,
-                  device_id: data.deviceId.toUpperCase(),
-                  platform: "1",
-                  seed_time: new Date().getTime() + "",
-                  ext_fields: `{"proxyStatus":"0","accelerometer":"-0.159515x-0.830887x-0.682495","ramCapacity":"3746","IDFV":"${data.deviceId.toUpperCase()}","gyroscope":"-0.191951x-0.112927x0.632637","isJailBreak":"0","model":"iPhone12,5","ramRemain":"115","chargeStatus":"1","networkType":"WIFI","vendor":"--","osVersion":"17.0.2","batteryStatus":"50","screenSize":"414×896","cpuCores":"6","appMemory":"55","romCapacity":"488153","romRemain":"157348","cpuType":"CPU_TYPE_ARM64","magnetometer":"-84.426331x-89.708435x-37.117889"}`,
-                  app_name: "bbs_cn",
-                  device_fp: "38d7ee834d1e9",
-                },
+                body: createCnDeviceFpBody(data.deviceId),
               },
             }
           : {

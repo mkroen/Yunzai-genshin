@@ -46,8 +46,26 @@ export default class MysApi {
 
   /* eslint-disable quotes */
   get device() {
-    if (!this._device) this._device = `Yz-${md5(this.uid).substring(0, 5)}`
+    if (!this._device) {
+      const ownerId = /(?:ltuid|account_id|account_mid_v2|ltmid_v2)=([^;]+)/.exec(this.cookie)?.[1]
+      const hash = md5(ownerId || String(this.uid))
+      this._device = `${hash.slice(0, 8)}-${hash.slice(8, 12)}-${hash.slice(12, 16)}-${hash.slice(16, 20)}-${hash.slice(20, 32)}`
+    }
     return this._device
+  }
+
+  async getDeviceFp() {
+    const cacheKey = `Yz:genshin:mys:device-fp:${md5(this.device)}`
+    const cached = await redis.get(cacheKey)
+    if (cached) return { retcode: 0, data: { code: 200, device_fp: cached } }
+
+    const result = await this.getData("getFp", { Getfp: true })
+    if (result?.retcode === 0 && result?.data?.code === 200 && result.data.device_fp) {
+      await redis.setEx(cacheKey, 30 * 24 * 60 * 60, result.data.device_fp)
+      return result
+    }
+    logger.warn(`[米游社设备指纹][${this.uid}] 获取失败 code=${result?.data?.code ?? "unknown"}`)
+    return false
   }
 
   getUrl(type, data = {}) {
@@ -101,10 +119,7 @@ export default class MysApi {
 
   async getData(type, data = {}, cached = false) {
     if (!this._device_fp && !data?.Getfp && !data?.headers?.["x-rpc-device_fp"]) {
-      this._device_fp = await this.getData("getFp", {
-        seed_id: this.generateSeed(16),
-        Getfp: true,
-      })
+      this._device_fp = await this.getDeviceFp()
     }
     if (type === "getFp" && !data?.Getfp) return this._device_fp
 
@@ -122,8 +137,17 @@ export default class MysApi {
       headers = { ...headers, ...data.headers }
     }
 
-    if (type !== "getFp" && !headers["x-rpc-device_fp"] && this._device_fp.data?.device_fp) {
+    if (type !== "getFp" && !headers["x-rpc-device_fp"] && this._device_fp?.data?.device_fp) {
       headers["x-rpc-device_fp"] = this._device_fp.data.device_fp
+    }
+
+    // Current CN Genshin game-record endpoints validate Cookie, User-Agent and device_fp, not DS.
+    if (
+      this.game === "gs" &&
+      !headers["x-rpc-challenge"] &&
+      url.startsWith("https://api-takumi-record.mihoyo.com/game_record/app/genshin/api/")
+    ) {
+      delete headers.DS
     }
 
     let param = {
@@ -134,6 +158,7 @@ export default class MysApi {
     if (body) {
       param.method = "post"
       param.body = body
+      headers["Content-Type"] = "application/json"
     } else {
       param.method = "get"
     }
@@ -170,7 +195,7 @@ export default class MysApi {
   getHeaders(query = "", body = "") {
     const cn = {
       app_version: CN_APP_VERSION,
-      User_Agent: `Mozilla/5.0 (Linux; Android 12; ${this.device}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36 miHoYoBBS/${CN_APP_VERSION}`,
+      User_Agent: `Mozilla/5.0 (Linux; Android 14; PHK110 Build/SKQ1.221119.001; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/126.0.6478.133 Mobile Safari/537.36 miHoYoBBS/${CN_APP_VERSION}`,
       client_type: "5",
       Origin: "https://webstatic.mihoyo.com",
       X_Requested_With: "com.mihoyo.hyperion",
@@ -194,7 +219,12 @@ export default class MysApi {
     return {
       "x-rpc-app_version": client.app_version,
       "x-rpc-client_type": client.client_type,
-      "x-rpc-device_id": this.device.toUpperCase(),
+      "x-rpc-device_id": this.device.toLowerCase(),
+      "x-rpc-device_name": "OnePlus PHK110",
+      "x-rpc-device_model": "PHK110",
+      "x-rpc-sys_version": "14",
+      "x-rpc-platform": "android",
+      "x-rpc-channel": "miyousheluodi",
       "User-Agent": client.User_Agent,
       Origin: client.Origin,
       "X-Requested-With": client.X_Requested_With,

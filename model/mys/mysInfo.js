@@ -456,12 +456,10 @@ export default class MysInfo {
       case -1002:
         if (res.api === "detail") res.retcode = 0
         break
-      case 5003:
-      case 10041:
-        if (!isTask) this.e.reply([`UID:${this.uid}，米游社账号异常，暂时无法查询`, this.mysButton])
-        break
       case 1034:
       case 10035:
+      case 5003:
+      case 10041:
         let handler = this.e.runtime?.handler || {}
 
         // 如果有注册的mys.req.err，调用
@@ -479,7 +477,7 @@ export default class MysInfo {
             })) || res
         }
 
-        if (!res || res?.retcode == 1034) {
+        if (!res || [1034, 10035, 5003, 10041].includes(Number(res?.retcode))) {
           logger.mark(`[米游社查询失败][uid:${this.uid}][qq:${this.userId}] 遇到验证码`)
           if (!isTask)
             this.e.reply([`UID:${this.uid}，米游社查询遇到验证码，请稍后再试`, this.mysButton])
