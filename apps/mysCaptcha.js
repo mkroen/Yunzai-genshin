@@ -25,7 +25,7 @@ function createDs(query = "") {
 }
 
 async function createVerification(cookie, game = "gs") {
-  const query = "is_high=false"
+  const query = "is_high=true"
   const response = await fetch(
     `https://api-takumi-record.mihoyo.com/game_record/app/card/wapi/createVerification?${query}`,
     {
