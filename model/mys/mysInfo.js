@@ -477,7 +477,10 @@ export default class MysInfo {
             })) || res
         }
 
-        if (!res || [1034, 10035, 5003, 10041].includes(Number(res?.retcode))) {
+        if (
+          !res?._captchaHandled &&
+          (!res || [1034, 10035, 5003, 10041].includes(Number(res?.retcode)))
+        ) {
           logger.mark(`[米游社查询失败][uid:${this.uid}][qq:${this.userId}] 遇到验证码`)
           if (!isTask)
             this.e.reply([`UID:${this.uid}，米游社查询遇到验证码，请稍后再试`, this.mysButton])

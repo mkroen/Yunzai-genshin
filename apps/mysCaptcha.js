@@ -3,7 +3,6 @@ import fetch from "node-fetch"
 import GsCfg from "../model/gsCfg.js"
 
 const ROUTE_PREFIX = "/mys-captcha/"
-const SESSION_TTL_MS = 2 * 60 * 1000
 const SOLVED_REUSE_MS = 30 * 1000
 const GLOBAL_STATE = Symbol.for("yunzai-genshin.mys-captcha.state")
 const REGISTERED = Symbol.for("yunzai-genshin.mys-captcha.registered")
@@ -89,7 +88,7 @@ async function verifyVerification(mysApi, game, solved) {
   return result?.data?.challenge || challenge
 }
 
-function captchaHtml(token, challenge) {
+function captchaHtml(token, challenge, timeoutSeconds) {
   const safeChallenge = JSON.stringify(challenge).replaceAll("<", "\\u003c")
   const safeToken = JSON.stringify(token)
   return `<!doctype html>
@@ -108,7 +107,7 @@ function captchaHtml(token, challenge) {
   </style>
   <script src="https://static.geetest.com/static/js/gt.0.5.0.js"></script>
 </head>
-<body><main><div class="card"><h1>米游社安全验证</h1><p class="tip">完成滑块后，Yunzai 会自动重试刚才的查询。链接两分钟内有效且只能使用一次。</p><div id="captcha"></div><div class="status" id="status">正在加载验证组件…</div></div></main>
+<body><main><div class="card"><h1>米游社安全验证</h1><p class="tip">完成滑块后，Yunzai 会自动重试刚才的查询。链接 ${timeoutSeconds} 秒内有效且只能使用一次。</p><div id="captcha"></div><div class="status" id="status">正在加载验证组件…</div></div></main>
 <script>
 const challenge=${safeChallenge};const token=${safeToken};const status=document.getElementById("status");
 initGeetest({gt:challenge.gt,challenge:challenge.challenge,new_captcha:challenge.new_captcha,offline:!challenge.success,product:"bind",width:"100%",https:location.protocol==="https:",api_server:"api.geetest.com",lang:"zh-cn"},captcha=>{
@@ -135,7 +134,9 @@ function registerRoutes() {
       state().sessions.delete(req.params.token)
       return res.status(410).send("验证链接已失效，请重新发起查询。")
     }
-    res.type("html").send(captchaHtml(req.params.token, session.challenge))
+    res
+      .type("html")
+      .send(captchaHtml(req.params.token, session.challenge, session.timeoutSeconds))
   })
 
   Bot.express.post(`${ROUTE_PREFIX}:token`, (req, res) => {
@@ -155,17 +156,19 @@ function registerRoutes() {
   })
 }
 
-function waitForVerification(challenge) {
+function waitForVerification(challenge, timeoutSeconds) {
   const token = crypto.randomBytes(24).toString("hex")
+  const ttlMs = timeoutSeconds * 1000
   let timer
   const result = new Promise((resolve, reject) => {
     timer = setTimeout(() => {
       state().sessions.delete(token)
       reject(new Error("captcha timeout"))
-    }, SESSION_TTL_MS)
+    }, ttlMs)
     state().sessions.set(token, {
       challenge,
-      expiresAt: Date.now() + SESSION_TTL_MS,
+      expiresAt: Date.now() + ttlMs,
+      timeoutSeconds,
       resolve(value) {
         clearTimeout(timer)
         resolve(value)
@@ -175,13 +178,13 @@ function waitForVerification(challenge) {
   return { token, result }
 }
 
-async function getPendingVerification(key, mysApi, game) {
+async function getPendingVerification(key, mysApi, game, timeoutSeconds) {
   const current = state().active.get(key)
   if (current) return { owner: false, pending: await current }
 
   const creating = (async () => {
     const challenge = await createVerification(mysApi, game)
-    return { ...waitForVerification(challenge), verification: null }
+    return { ...waitForVerification(challenge, timeoutSeconds), verification: null }
   })()
   state().active.set(key, creating)
 
@@ -195,10 +198,20 @@ async function getPendingVerification(key, mysApi, game) {
   }
 }
 
-async function sendPrivateLink(e, link) {
-  const message = `米游社查询触发了安全验证，请在两分钟内完成：\n${link}`
+async function sendPrivateMessage(e, message) {
   if (e?.bot?.pickFriend) return e.bot.pickFriend(e.user_id).sendMsg(message)
   return Bot.sendFriendMsg(e.self_id, e.user_id, message)
+}
+
+async function sendPrivateLink(e, link, timeoutSeconds) {
+  return sendPrivateMessage(
+    e,
+    `米游社查询触发了安全验证，请在 ${timeoutSeconds} 秒内完成：\n${link}`,
+  )
+}
+
+function handled(res) {
+  return { ...(res || {}), _captchaHandled: true }
 }
 
 export class mysCaptcha extends plugin {
@@ -225,17 +238,37 @@ export class mysCaptcha extends plugin {
     }
 
     const settings = GsCfg.getConfig("mys", "set") || {}
+    if (settings.captchaEnabled !== true) {
+      reject("验证码服务未启用")
+      return res
+    }
+
+    const mode = settings.captchaMode === "all" ? "all" : "allowlist"
     const allowUsers = new Set((settings.captchaAllowUsers || []).map(String))
-    if (!allowUsers.has(String(e.user_id))) {
+    if (mode !== "all" && !allowUsers.has(String(e.user_id))) {
       reject("用户不在验证码灰度白名单")
       return res
     }
+
+    if (e.isGroup) {
+      if (!e._mysCaptchaGroupNotified) {
+        e._mysCaptchaGroupNotified = true
+        await e.reply("米游社查询遇到验证码，请私聊发送相同命令并完成验证。")
+      }
+      return handled(res)
+    }
+
+    if (e._mysCaptchaFailed) return handled(res)
 
     const baseUrl = String(settings.captchaBaseUrl || "").replace(/\/$/, "")
     if (!baseUrl) {
       reject("未配置 captchaBaseUrl")
       return res
     }
+    const timeoutSeconds = Math.min(
+      300,
+      Math.max(30, Number(settings.captchaTimeoutSeconds) || 120),
+    )
 
     try {
       const cookieId = crypto.createHash("sha256").update(mysApi.cookie).digest("hex").slice(0, 16)
@@ -244,11 +277,11 @@ export class mysCaptcha extends plugin {
         activeKey,
         mysApi,
         mysApi.game,
+        timeoutSeconds,
       )
       const link = `${baseUrl}${ROUTE_PREFIX}${pending.token}`
       if (owner) {
-        await sendPrivateLink(e, link)
-        if (e.isGroup) await e.reply("米游社需要安全验证，链接已发送至私聊。")
+        await sendPrivateLink(e, link, timeoutSeconds)
       }
       const solved = await pending.result
       pending.verification ??= verifyVerification(mysApi, mysApi.game, solved)
@@ -273,7 +306,12 @@ export class mysCaptcha extends plugin {
       })
     } catch (error) {
       logger.warn(`[米游社验证码] ${error.message}`)
-      return res
+      e._mysCaptchaFailed = true
+      if (!e._mysCaptchaFailureReplied) {
+        e._mysCaptchaFailureReplied = true
+        await sendPrivateMessage(e, "未通过验证码，请重试")
+      }
+      return handled(res)
     }
   }
 }

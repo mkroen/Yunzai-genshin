@@ -1,7 +1,10 @@
 # 公共查询是否使用用户ck  0-不使用 1-使用
 allowUseCookie: 1
-# 验证码服务外部地址与灰度用户，默认关闭
+# 验证码服务：captchaEnabled=false 关闭，allowlist 白名单，all 全量
+captchaEnabled: false
+captchaMode: allowlist
 captchaBaseUrl: ""
+captchaTimeoutSeconds: 120
 captchaAllowUsers: []
 # 默认cookie帮助文档链接地址
 cookieDoc: https://docs.qq.com/doc/DUWNVQVFTU3liTVlO
