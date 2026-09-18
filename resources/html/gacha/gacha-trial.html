@@ -5,7 +5,6 @@
 {{/block}}
 
 {{block 'main'}}
-{{if nowFive < 4}}
 <div class="info-bg info-name">{{name}}</div>
 <div class="info-bg info-count">{{info}}</div>
 {{if isWeapon}}
@@ -15,7 +14,6 @@
 {{/if}}
 {{else if poolName}}
 <div class="info-bg poor-info">{{poolName}}</div>
-{{/if}}
 {{/if}}
 <div class="list-box">
   {{each list}}
@@ -38,16 +36,16 @@
     </div>
     {{/if}}
 
-    {{if $value.star==5 && nowFive < 4 && !$value.have }}
+    {{if $value.star==5 && !$value.have }}
     <div class="times">「{{$value.num}}抽」</div>
     {{/if}}
     {{if $value.have && $value.type == 'role'}}
     {{if $value.star == 5}}
     <img class="item-starGold" src="{{_res_path}}img/gacha/items/星尘金.png"/>
-    <img class="item-starlight" src="{{_res_path}}img/gacha/items/星辉10.png"/>
+    <img class="item-starlight" src="{{_res_path}}img/gacha/items/星辉{{$value.starLight}}.png"/>
     {{else}}
     <img class="item-starGold" src="{{_res_path}}img/gacha/items/星尘紫.png"/>
-    <img class="item-starlight" src="{{_res_path}}img/gacha/items/星辉2.png"/>
+    <img class="item-starlight" src="{{_res_path}}img/gacha/items/星辉{{$value.starLight || 2}}.png"/>
     {{/if}}
     {{else}}
     {{if $value.element }}

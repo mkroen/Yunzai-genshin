@@ -30,6 +30,8 @@ export default class GachaData extends base {
 
     this.fiveHave = []
     this.fourHave = []
+    /** 本次十连内五星出现次数（满命判定用，不跨次记录） */
+    this.fiveCount = {}
   }
 
   static async init(e) {
@@ -291,17 +293,22 @@ export default class GachaData extends base {
     this.user.week.num++
 
     let have = false
+    /** 本次十连内该角色出现次数 */
+    let haveNum = (this.fiveCount[tmpName] = (this.fiveCount[tmpName] || 0) + 1)
     /** 重复抽中转换星辉 */
     if (this.fiveHave.includes(tmpName)) {
       have = true
     } else {
       this.fiveHave.push(tmpName)
     }
+    /** 满命后重复（本次十连内第 8 个起）转 25 星辉，否则 10 */
+    let starLight = haveNum >= 8 ? 25 : 10
 
     this.res.push({
       name: tmpName,
       star: 5,
       type,
+      starLight,
       num: nowCardNum,
       element: this.ele[tmpName] || "",
       index: this.index,
@@ -377,6 +384,7 @@ export default class GachaData extends base {
       name: tmpName,
       star: 4,
       type,
+      starLight: 2,
       element: this.ele[tmpName] || "",
       index: this.index,
       imgFile: GachaData.getImg(tmpName, type),
