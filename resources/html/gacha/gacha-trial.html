@@ -41,8 +41,12 @@
     {{/if}}
     {{if $value.have && $value.type == 'role'}}
     {{if $value.star == 5}}
+    {{if $value.starLight == 25}}
+    <img class="item-starlight item-starlight-solo" src="{{_res_path}}img/gacha/items/星辉25.png"/>
+    {{else}}
     <img class="item-starGold" src="{{_res_path}}img/gacha/items/星尘金.png"/>
-    <img class="item-starlight" src="{{_res_path}}img/gacha/items/星辉{{$value.starLight}}.png"/>
+    <img class="item-starlight" src="{{_res_path}}img/gacha/items/星辉10.png"/>
+    {{/if}}
     {{else}}
     <img class="item-starGold" src="{{_res_path}}img/gacha/items/星尘紫.png"/>
     <img class="item-starlight" src="{{_res_path}}img/gacha/items/星辉{{$value.starLight || 2}}.png"/>
