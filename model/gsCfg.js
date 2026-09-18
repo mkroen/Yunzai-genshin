@@ -160,6 +160,15 @@ class GsCfg {
     return def
   }
 
+  /** 抽卡白名单：按 QQ 读取独立出金率配置，未配置返回 null */
+  getGachaWhite(userId) {
+    let config = this.getYaml("gacha", "set", "config") || {}
+    let list = config.whiteList || {}
+    let white = list[userId]
+    if (!white || typeof white != "object") return null
+    return white
+  }
+
   getMsgUid(msg) {
     let ret = /(18|[1-9])[0-9]{8}/g.exec(msg)
     if (!ret) return false

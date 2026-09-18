@@ -18,6 +18,8 @@ export default class GachaData extends base {
     /** 默认设置 */
     this.def = gsCfg.getdefSet("gacha", "gacha")
     this.set = gsCfg.getGachaSet(this.e.group_id)
+    /** 白名单出金率（按 QQ 独立配置） */
+    this.white = gsCfg.getGachaWhite(this.e.user_id)
 
     /** 角色武器类型 */
     this.ele = gsCfg.element
@@ -232,6 +234,10 @@ export default class GachaData extends base {
     this.user[this.type].num4++
 
     let tmpUp = this.def.wai
+    /** 白名单独立 UP 概率 */
+    if (this.white && this.white.wai !== undefined && this.white.wai !== null) {
+      tmpUp = this.white.wai
+    }
 
     /** 已经小保底 */
     if (this.user[this.type].isUp5 == 1) {
@@ -436,6 +442,12 @@ export default class GachaData extends base {
       } else if (this.user[this.type].num5 >= 10 && this.user[this.type].num5 <= 20) {
         tmpChance5 = tmpChance5 + (this.user[this.type].num5 - 10) * 30
       }
+    }
+
+    /** 白名单独立出金率 */
+    if (this.white) {
+      let chance = this.type == "weapon" ? this.white.chanceW5 : this.white.chance5
+      if (chance !== undefined && chance !== null) tmpChance5 = chance
     }
 
     return tmpChance5
